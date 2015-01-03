@@ -1,0 +1,8 @@
+*.sln
+*.suo
+*.dll
+bin
+*.csproj
+*.user
+obj
+*.config
