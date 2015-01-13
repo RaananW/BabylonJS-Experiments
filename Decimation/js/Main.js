@@ -16,31 +16,54 @@ window.onload = function () {
     //Init babylon
     var babylonInit = new RW.Babylon.BabylonInit(babylonCanvas, 0 /* ARC_ROTATE */);
     babylonInit.attachCameraControl();
-    babylonInit.getCamera().setPosition(new BABYLON.Vector3(-12, 30, 350));
+    babylonInit.getCamera()['setPosition'](new BABYLON.Vector3(-12, 30, 350));
 
     BABYLON.SceneLoader.ImportMesh("", "./", "test_out.babylon", babylonInit.getScene(), function () {
-        var knot = babylonInit.getScene().getMeshByID("52809131-6db1-4985-928f-27733e9ce896");
+        var originalMesh = babylonInit.getScene().getMeshByID("52809131-6db1-4985-928f-27733e9ce896");
         var material = new BABYLON.StandardMaterial("mat", babylonInit.getScene());
-        knot.material = material;
+        originalMesh.material = material;
+        originalMesh.material.backFaceCulling = false;
+        var parallel = getUrlParameter("parallel") == "true" ? true : false;
+        var levels = getUrlParameter("levels") ? parseInt(getUrlParameter("levels")) : 4;
+        var distanceOffset = getUrlParameter("offset") ? parseInt(getUrlParameter("offset")) : 100;
+        var offset = 1 / levels;
+        babylonInit.getScene().debugLayer.show();
+        if (parallel) {
+            var levelsArray = [];
+            for (var i = 1; i < levels; ++i) {
+                levelsArray.push(1 - (i * offset));
+            }
+            levelsArray.forEach(function (rate) {
+                var decimation = new RaananW.Decimation.Decimator(originalMesh);
+                decimation.reInit(function () {
+                    decimation.runDecimation(rate, function (mesh) {
+                        originalMesh.addLODLevel(distanceOffset / rate, mesh);
+                        if (rate == levelsArray[levelsArray.length - 1]) {
+                            originalMesh.material.diffuseColor = BABYLON.Color3.Green();
+                        }
+                    });
+                });
+            });
+        } else {
+            var decimation = new RaananW.Decimation.Decimator();
 
-        //knot.material.wireframe = true;
-        knot.material.backFaceCulling = false;
-        var decimation = new RaananW.Decimation.Decimator(knot);
-        var rate = getUrlParameter("rate") ? parseFloat(getUrlParameter("rate")) : 0.5;
-        decimation.runDecimation(rate);
-        var mesh = decimation.reconstructMesh();
+            var runDecimation = function (rate, callback) {
+                decimation.initWithMesh(originalMesh, function () {
+                    decimation.runDecimation(rate, function (mesh) {
+                        originalMesh.addLODLevel(distanceOffset / rate, mesh);
+                        callback();
+                    });
+                });
+            };
 
-        [mesh, knot].forEach(function (m) {
-            m.actionManager = new BABYLON.ActionManager(babylonInit.getScene());
-            m.actionManager.registerAction(new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger, function (evt) {
-                console.log(babylonInit.getCamera());
-                babylonInit.getCamera().target = (m.position);
-            }));
-        });
-
-        knot.position.x -= 200;
-        mesh.position.x += 100;
-        console.log(knot.getTotalIndices() / 3, mesh.getTotalIndices() / 3);
+            RaananW.Tools.AsyncLoop(levels, function (loop) {
+                runDecimation(1 - (loop.currentIndex() * offset), function () {
+                    loop.executeNext();
+                });
+            }, function () {
+                originalMesh.material.diffuseColor = BABYLON.Color3.Green();
+            });
+        }
     });
 };
 //# sourceMappingURL=Main.js.map
