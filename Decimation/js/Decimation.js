@@ -1,10 +1,27 @@
-﻿/*
-* Quadratic Error surfac simplification based on  http://www.cs.cmu.edu/afs/cs.cmu.edu/user/garland/www/Papers/quadric2.pdf
-* Code mostly ported from http://voxels.blogspot.de/2014/05/quadric-mesh-simplification-with-source.html to JavaScript / BabylonJS
-* Raanan Weber, 2015
+﻿/* MIT License
+Copyright (c) 2014-2015 Raanan Weber (raananw@gmail.com)
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in the
+Software without restriction, including without limitation the rights to use, copy,
+modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+and to permit persons to whom the Software is furnished to do so, subject to the
+following conditions:
+The above copyright notice and this permission notice shall be included in all copies
+or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 var RaananW;
 (function (RaananW) {
+    /*
+    * Quadratic Error surfac simplification based on  http://www.cs.cmu.edu/afs/cs.cmu.edu/user/garland/www/Papers/quadric2.pdf
+    * Code mostly ported from http://voxels.blogspot.de/2014/05/quadric-mesh-simplification-with-source.html to JavaScript / BabylonJS
+    * Raanan Weber, 2014-2015
+    */
     (function (Decimation) {
         var DecimationTriangle = (function () {
             function DecimationTriangle(vertices) {
@@ -200,10 +217,20 @@ var RaananW;
 
                 var newMesh = new BABYLON.Mesh(this._mesh + "Decimated", this._mesh.getScene());
                 newMesh.material = this._mesh.material;
+                newMesh.parent = this._mesh.parent;
+
+                //var geometry = new BABYLON.Geometry("g1", this._mesh.getScene()); //clone in order to get the skeleton working.
                 newMesh.setIndices(newIndicesArray);
                 newMesh.setVerticesData(BABYLON.VertexBuffer.PositionKind, newPositionData);
                 newMesh.setVerticesData(BABYLON.VertexBuffer.NormalKind, newNormalData);
                 newMesh.setVerticesData(BABYLON.VertexBuffer.UVKind, newUVsData);
+
+                //geometry.applyToMesh(newMesh);
+                //preparing the skeleton support
+                if (this._mesh.skeleton) {
+                    //newMesh.skeleton = this._mesh.skeleton.clone("", "");
+                    //newMesh.getScene().beginAnimation(newMesh.skeleton, 0, 100, true, 1.0);
+                }
 
                 return newMesh;
             };
@@ -234,6 +261,7 @@ var RaananW;
                         var threshold = 0.000000001 * Math.pow((iteration + 3), agressiveness);
 
                         var trianglesIterator = function (i) {
+                            var tIdx = ((_this.triangles.length / 2) + i) % _this.triangles.length;
                             var t = _this.triangles[i];
                             if (!t)
                                 return;

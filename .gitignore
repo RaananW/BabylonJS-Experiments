@@ -6,3 +6,4 @@ bin
 *.user
 obj
 *.config
+/Decimation/Scenes

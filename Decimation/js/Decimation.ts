@@ -1,9 +1,31 @@
-﻿/*
- * Quadratic Error surfac simplification based on  http://www.cs.cmu.edu/afs/cs.cmu.edu/user/garland/www/Papers/quadric2.pdf
- * Code mostly ported from http://voxels.blogspot.de/2014/05/quadric-mesh-simplification-with-source.html to JavaScript / BabylonJS
- * Raanan Weber, 2015
+﻿/* MIT License
+
+Copyright (c) 2014-2015 Raanan Weber (raananw@gmail.com)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of 
+this software and associated documentation files (the "Software"), to deal in the 
+Software without restriction, including without limitation the rights to use, copy, 
+modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, 
+and to permit persons to whom the Software is furnished to do so, subject to the 
+following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies 
+or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION 
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
  */
 
+/*
+ * Quadratic Error surfac simplification based on  http://www.cs.cmu.edu/afs/cs.cmu.edu/user/garland/www/Papers/quadric2.pdf
+ * Code mostly ported from http://voxels.blogspot.de/2014/05/quadric-mesh-simplification-with-source.html to JavaScript / BabylonJS
+ * Raanan Weber, 2014-2015
+ */
 
 module RaananW.Decimation {
 
@@ -208,7 +230,6 @@ module RaananW.Decimation {
 
             var newIndicesArray: Array<number> = [];
             for (var i = 0; i < newTriangles.length; ++i) {
-                
                 newIndicesArray.push(newTriangles[i].vertices[0]);
                 newIndicesArray.push(newTriangles[i].vertices[1]);
                 newIndicesArray.push(newTriangles[i].vertices[2]);
@@ -216,10 +237,18 @@ module RaananW.Decimation {
 
             var newMesh = new BABYLON.Mesh(this._mesh + "Decimated", this._mesh.getScene());
             newMesh.material = this._mesh.material;
+            newMesh.parent = this._mesh.parent;
+            //var geometry = new BABYLON.Geometry("g1", this._mesh.getScene()); //clone in order to get the skeleton working.
             newMesh.setIndices(newIndicesArray);
             newMesh.setVerticesData(BABYLON.VertexBuffer.PositionKind, newPositionData);
             newMesh.setVerticesData(BABYLON.VertexBuffer.NormalKind, newNormalData);
             newMesh.setVerticesData(BABYLON.VertexBuffer.UVKind, newUVsData);
+            //geometry.applyToMesh(newMesh);
+            //preparing the skeleton support
+            if (this._mesh.skeleton) {
+                //newMesh.skeleton = this._mesh.skeleton.clone("", "");
+                //newMesh.getScene().beginAnimation(newMesh.skeleton, 0, 100, true, 1.0);
+            }
 
             return newMesh;
         }
@@ -248,65 +277,66 @@ module RaananW.Decimation {
                     var threshold = 0.000000001 * Math.pow((iteration + 3), agressiveness);
 
                     var trianglesIterator = (i) => {
-                                var t = this.triangles[i];
-                                if (!t) return;
-                                if (t.error[3] > threshold) { return }
-                                if (t.deleted) { return }
-                                if (t.isDirty) {  return }
+                        var tIdx = ((this.triangles.length / 2) + i) % this.triangles.length;
+                        var t = this.triangles[i];
+                        if (!t) return;
+                        if (t.error[3] > threshold) { return }
+                        if (t.deleted) { return }
+                        if (t.isDirty) {  return }
 
-                                /*var borderFactor = 0;
+                        /*var borderFactor = 0;
 
-                                t.vertices.forEach((id) => { borderFactor += this.vertices[id].isBorder ? 1 : 0; });
-                                if (iteration < 25 && borderFactor > 0) continue;
-                                if (iteration < 50 && borderFactor > 1) continue;
-                                if (iteration < 75 && borderFactor > 2) continue;
-                                */
-                                for (var j = 0; j < 3; ++j) {
-                                    if (t.error[j] < threshold) {
-                                        var deleted0: Array<boolean> = [];
-                                        var deleted1: Array<boolean> = [];
+                        t.vertices.forEach((id) => { borderFactor += this.vertices[id].isBorder ? 1 : 0; });
+                        if (iteration < 25 && borderFactor > 0) continue;
+                        if (iteration < 50 && borderFactor > 1) continue;
+                        if (iteration < 75 && borderFactor > 2) continue;
+                        */
+                        for (var j = 0; j < 3; ++j) {
+                            if (t.error[j] < threshold) {
+                                var deleted0: Array<boolean> = [];
+                                var deleted1: Array<boolean> = [];
 
-                                        var i0 = t.vertices[j];
-                                        var i1 = t.vertices[(j + 1) % 3];
-                                        var v0 = this.vertices[i0];
-                                        var v1 = this.vertices[i1];
+                                var i0 = t.vertices[j];
+                                var i1 = t.vertices[(j + 1) % 3];
+                                var v0 = this.vertices[i0];
+                                var v1 = this.vertices[i1];
 
-                                        if (v0.isBorder != v1.isBorder) continue;
+                                if (v0.isBorder != v1.isBorder) continue;
 
-                                        var p = BABYLON.Vector3.Zero();
-                                        var n = BABYLON.Vector3.Zero();
-                                        var uv = BABYLON.Vector2.Zero();
+                                var p = BABYLON.Vector3.Zero();
+                                var n = BABYLON.Vector3.Zero();
+                                var uv = BABYLON.Vector2.Zero();
 
-                                        this.calculateError(v0, v1, p, n, uv);
+                                this.calculateError(v0, v1, p, n, uv);
 
-                                        if (this.isFlipped(v0, i1, p, deleted0, t.borderFactor)) continue;
-                                        if (this.isFlipped(v1, i0, p, deleted1, t.borderFactor)) continue;
+                                if (this.isFlipped(v0, i1, p, deleted0, t.borderFactor)) continue;
+                                if (this.isFlipped(v1, i0, p, deleted1, t.borderFactor)) continue;
 
-                                        v0.position = p;
-                                        v0.normal = n;
-                                        v0.uv = uv;
-                                        v0.q = v1.q.add(v0.q);
-                                        var tStart = this.references.length;
+                                v0.position = p;
+                                v0.normal = n;
+                                v0.uv = uv;
+                                v0.q = v1.q.add(v0.q);
+                                var tStart = this.references.length;
 
-                                        deletedTriangles = this.updateTriangles(v0.id, v0, deleted0, deletedTriangles);
-                                        deletedTriangles = this.updateTriangles(v0.id, v1, deleted1, deletedTriangles);
+                                deletedTriangles = this.updateTriangles(v0.id, v0, deleted0, deletedTriangles);
+                                deletedTriangles = this.updateTriangles(v0.id, v1, deleted1, deletedTriangles);
 
-                                        var tCount = this.references.length - tStart;
+                                var tCount = this.references.length - tStart;
 
-                                        if (tCount <= v0.triangleCount) {
-                                            if (tCount) {
-                                                for (var c = 0; c < tCount; c++) {
-                                                    this.references[v0.triangleStart + c] = this.references[tStart + c];
-                                                }
-                                            }
-                                        } else {
-                                            v0.triangleStart = tStart;
+                                if (tCount <= v0.triangleCount) {
+                                    if (tCount) {
+                                        for (var c = 0; c < tCount; c++) {
+                                            this.references[v0.triangleStart + c] = this.references[tStart + c];
                                         }
-
-                                        v0.triangleCount = tCount;
-                                        break;
                                     }
+                                } else {
+                                    v0.triangleStart = tStart;
                                 }
+
+                                v0.triangleCount = tCount;
+                                break;
+                            }
+                        }
                     }
                     RaananW.Tools.SyncToAsyncForLoop(this.triangles.length, this._syncIterations, trianglesIterator, callback, () => { return (triangleCount - deletedTriangles <= targetCount) })
                 }, 0);
